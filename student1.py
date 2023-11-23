@@ -1,62 +1,51 @@
 import streamlit as st
 
-# Base Class: Student
-class Student:
-    def __init__(self, name, age, grade, address, contact_number, marks):
-        self._name = name
-        self._age = age
-        self._grade = grade
-        self._address = address
-        self._contact_number = contact_number
-        self._marks = marks
+class Employee:
+    def __init__(self, name, assigned_tasks):
+        self.name = name
+        self.assigned_tasks = assigned_tasks
+        self.completed_tasks = 0
 
-    def calculate_grade(self):
-        if self._marks > 90:
-            return "A"
-        elif self._marks >= 80:
-            return "B"
-        elif self._marks >= 70:
-            return "C"
-        else:
-            return "D"
-
-    def display_details(self):
-        details = {
-            "Name": self._name,
-            "Age": self._age,
-            "Grade": self._grade,
-            "Address": self._address,
-            "Contact Number": self._contact_number,
-            "Marks": self._marks,
-            "Grade": self.calculate_grade()
-        }
-        return details
-
+    def calculate_performance(self):
+        if self.assigned_tasks == 0:
+            return 0  # To avoid division by zero
+        return (self.completed_tasks / self.assigned_tasks) * 100
 
 # Streamlit UI
 def main():
-    st.title("Student Details and Marks")
+    st.title("Employee Performance Calculator")
 
-    # Input details for multiple students
-    students = []
-    while st.button("Add Student"):
-        st.write(f"\n--- Student {len(students) + 1} ---")
-        # User input for common student details
-        name = st.text_input("Enter Student Name:")
-        age = st.number_input("Enter Student Age:")
-        grade = st.text_input("Enter Student Grade:")
-        address = st.text_area("Enter Address:")
-        contact_number = st.text_input("Enter Contact Number:")
-        marks = st.number_input("Enter Overall Marks:")
+    # Input details for multiple employees
+    employees = []
+    while st.button("Add Employee"):
+        st.write(f"\n--- Employee {len(employees) + 1} ---")
+        # User input for employee details
+        name = st.text_input("Enter Employee Name:")
+        assigned_tasks = st.number_input("Enter Number of Assigned Tasks:", min_value=0, step=1)
 
-        # Create an instance of StudentMarks
-        student = Student(name, age, grade, address, contact_number, marks)
-        students.append(student)
+        # Create an instance of Employee
+        employee = Employee(name, assigned_tasks)
 
-    # Display student details and marks in a table
-    details_list = [student.display_details() for student in students]
-    st.table(details_list)
+        # User input for completed tasks
+        completed_tasks = st.number_input("Enter Number of Completed Tasks:", min_value=0, step=1, max_value=employee.assigned_tasks)
+        employee.completed_tasks = completed_tasks
 
+        employees.append(employee)
+
+    # Display employee performance in a table
+    performance_list = []
+    for i, employee in enumerate(employees, 1):
+        performance = {
+            "Employee": i,
+            "Name": employee.name,
+            "Assigned Tasks": employee.assigned_tasks,
+            "Completed Tasks": employee.completed_tasks,
+            "Performance (%)": employee.calculate_performance()
+        }
+        performance_list.append(performance)
+
+    st.table(performance_list)
 
 if __name__ == "__main__":
     main()
+
