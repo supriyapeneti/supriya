@@ -56,7 +56,7 @@ def main():
     marks = st.number_input("Enter Overall Marks:")
 
     # Create an instance of StudentMarks
-    student = StudentMarks(name, age, grade, address, contact_number, marks)
+    student = StudentMarks(name, age,address, contact_number, marks)
 
     # Display student details and marks in a table
     details = student.display_details()
