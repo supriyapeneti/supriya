@@ -22,40 +22,45 @@ class Employee:
         overall_performance = (task_performance + attendance_percentage + leave_percentage) / 3
         return overall_performance
 
-# Streamlit web application with table and pie chart
+# Streamlit web application with table and bar chart
 def main():
     st.title("Employee Performance Calculator")
 
-    # Input for multiple employees
-    num_employees = st.number_input("Enter Number of Employees:", min_value=1, step=1)
+    # Input for employee details
+    name = st.text_input("Enter Employee Name:")
+    assigned_tasks = st.number_input("Enter Number of Assigned Tasks:", min_value=1, step=1)
+    total_attendance = st.number_input("Enter Total Attendance (in days):", min_value=0, max_value=30, step=1)
+    total_leaves = st.number_input("Enter Total Leaves (in days):", min_value=0, max_value=30, step=1)
 
-    employees = []
-    for i in range(num_employees):
-        name = st.text_input(f"Enter Employee {i+1} Name:")
-        assigned_tasks = st.number_input(f"Enter Number of Assigned Tasks for Employee {i+1}:", min_value=1, step=1)
-        total_attendance = st.number_input(f"Enter Total Attendance (in days) for Employee {i+1}:", min_value=0, max_value=30, step=1)
-        total_leaves = st.number_input(f"Enter Total Leaves (in days) for Employee {i+1}:", min_value=0, max_value=30, step=1)
+    # Create an instance of the Employee class
+    employee = Employee(name, assigned_tasks, total_attendance, total_leaves)
 
-        employee = Employee(name, assigned_tasks, total_attendance, total_leaves)
-        employees.append(employee)
+    # Input for completed tasks
+    tasks_completed = st.number_input("Enter Number of Completed Tasks:", min_value=0, step=1)
+    employee.complete_task(tasks_completed)
 
-    # Display performance for each employee
-    for i, employee in enumerate(employees):
-        st.write(f"\n**Employee {i+1} - {employee.name}**")
+    # Display performance
+    if assigned_tasks > 0:
+        performance_percentage = employee.calculate_performance()
+        st.write(f"Performance: {performance_percentage:.2f}%")
+
+        # Display table
         st.table({
             'Name': [employee.name],
             'Assigned Tasks': [employee.assigned_tasks],
             'Completed Tasks': [employee.completed_tasks],
             'Attendance Percentage': [(employee.total_attendance / 30) * 100],
             'Leaves Taken': [employee.total_leaves],
-            'Performance Percentage': [employee.calculate_performance()]
+            'Performance Percentage': [performance_percentage]
         })
 
-    # Pie chart for overall performance
-    overall_performances = [employee.calculate_performance() for employee in employees]
-    labels = [f"Employee {i+1}" for i in range(num_employees)]
-    st.write("\n**Overall Performance Pie Chart**")
-    st.pie_chart(overall_performances, labels=labels)
+        # Bar chart
+        chart_data = {
+            'Tasks Completed': employee.completed_tasks,
+            'Attendance Percentage': (employee.total_attendance / 30) * 100,
+            'Leaves Taken': employee.total_leaves
+        }
+        st.bar_chart(chart_data)
 
 if __name__ == "__main__":
     main()
