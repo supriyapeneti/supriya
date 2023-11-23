@@ -54,32 +54,32 @@ def main():
         # Task Performance
         st.subheader("Task Performance:")
         task_performance_data = {
-            'Completed Tasks': [employee.completed_tasks],
-            'Assigned Tasks': [employee.assigned_tasks],
-            'Task Performance Percentage': [employee.calculate_task_performance()]
+            'Metric': ['Completed Tasks', 'Assigned Tasks', 'Task Performance Percentage'],
+            'Value': [employee.completed_tasks, employee.assigned_tasks, employee.calculate_task_performance()]
         }
         st.table(task_performance_data)
 
         # Attendance Performance
         st.subheader("Attendance Performance:")
         attendance_performance_data = {
-            'Total Attendance Days': [employee.total_attendance],
-            'Attendance Percentage': [employee.calculate_attendance_performance()]
+            'Metric': ['Total Attendance Days', 'Attendance Percentage'],
+            'Value': [employee.total_attendance, employee.calculate_attendance_performance()]
         }
         st.table(attendance_performance_data)
 
         # Leave Performance
         st.subheader("Leave Performance:")
         leave_performance_data = {
-            'Total Leaves Taken': [employee.total_leaves],
-            'Leave Performance Percentage': [employee.calculate_leave_performance()]
+            'Metric': ['Total Leaves Taken', 'Leave Performance Percentage'],
+            'Value': [employee.total_leaves, employee.calculate_leave_performance()]
         }
         st.table(leave_performance_data)
 
         # Overall Performance
         st.subheader("Overall Performance:")
         overall_performance_data = {
-            'Overall Performance Percentage': [employee.calculate_overall_performance()]
+            'Metric': ['Overall Performance Percentage'],
+            'Value': [employee.calculate_overall_performance()]
         }
         st.table(overall_performance_data)
 
