@@ -50,13 +50,13 @@ def main():
     # User input for common student details
     name = st.text_input("Enter Student Name:")
     age = st.number_input("Enter Student Age:")
-    #grade = st.text_input("Enter Student Grade:")
+    grade = st.text_input("Enter Student Grade:")
     address = st.text_area("Enter Address:")
     contact_number = st.text_input("Enter Contact Number:")
     marks = st.number_input("Enter Overall Marks:")
 
     # Create an instance of StudentMarks
-    student = StudentMarks(name, age,address, contact_number, marks)
+    student = StudentMarks(name, age,address, grade,contact_number, marks)
 
     # Display student details and marks in a table
     details = student.display_details()
