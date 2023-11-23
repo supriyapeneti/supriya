@@ -47,20 +47,29 @@ class StudentMarks(Student):
 def main():
     st.title("Student Details and Marks")
 
-    # User input for common student details
-    name = st.text_input("Enter Student Name:")
-    age = st.number_input("Enter Student Age:")
-    grade = st.text_input("Enter Student Grade:")
-    address = st.text_area("Enter Address:")
-    contact_number = st.text_input("Enter Contact Number:")
-    marks = st.number_input("Enter Overall Marks:")
+    # User input for the number of students
+    num_students = st.number_input("Enter the number of students:", min_value=1, value=1, step=1)
 
-    # Create an instance of StudentMarks
-    student = StudentMarks(name, age,address, grade,contact_number, marks)
+    students = []
+
+    # Input details for each student
+    for _ in range(num_students):
+        st.write(f"\n--- Student {_ + 1} ---")
+        # User input for common student details
+        name = st.text_input("Enter Student Name:")
+        age = st.number_input("Enter Student Age:")
+        grade = st.text_input("Enter Student Grade:")
+        address = st.text_area("Enter Address:")
+        contact_number = st.text_input("Enter Contact Number:")
+        marks = st.number_input("Enter Overall Marks:")
+
+        # Create an instance of StudentMarks
+        student = StudentMarks(name, age, grade, address, contact_number, marks)
+        students.append(student)
 
     # Display student details and marks in a table
-    details = student.display_details()
-    st.table([details])
+    details_list = [student.display_details() for student in students]
+    st.table(details_list)
 
 
 if __name__ == "__main__":
