@@ -55,7 +55,11 @@ def main():
         })
 
         # Bar chart
-        chart_data = {'Tasks Completed': employee.completed_tasks, 'Attendance Percentage': (employee.total_attendance / 30) * 100}
+        chart_data = {
+            'Tasks Completed': employee.completed_tasks,
+            'Attendance Percentage': (employee.total_attendance / 30) * 100,
+            'Leaves Taken': employee.total_leaves
+        }
         st.bar_chart(chart_data)
 
 if __name__ == "__main__":
