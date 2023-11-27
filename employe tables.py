@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, String, Float, MetaData, Table
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +16,7 @@ class Employee(Base):
     total_leaves = Column(Integer)
 
 # Database setup
-DATABASE_URL = "sqlite:///./employee_performance.db"
+DATABASE_URL = "sqlite:///.desktop/employee_performance.db"
 engine = create_engine(DATABASE_URL)
 Base.metadata.create_all(bind=engine)
 
@@ -78,6 +79,10 @@ def main():
         session.add(employee)
         session.commit()
         session.close()
+
+    # Save data to Excel file
+    df = pd.DataFrame([employee.__dict__ for employee in employees])
+    df.to_excel("employee_data.xlsx", index=False)
 
 if __name__ == "__main__":
     main()
