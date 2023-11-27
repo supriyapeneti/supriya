@@ -1,34 +1,23 @@
 import streamlit as st
+from sqlalchemy import create_engine, Column, Integer, String, Float, MetaData, Table
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-class Employee:
-    def __init__(self, name, assigned_tasks, total_attendance, total_leaves):
-        self.name = name
-        self.assigned_tasks = assigned_tasks
-        self.completed_tasks = 0
-        self.total_attendance = total_attendance
-        self.total_leaves = total_leaves
+Base = declarative_base()
 
-    def complete_task(self, tasks_completed):
-        self.completed_tasks += tasks_completed
+class Employee(Base):
+    __tablename__ = 'employees'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    assigned_tasks = Column(Integer)
+    completed_tasks = Column(Integer)
+    total_attendance = Column(Integer)
+    total_leaves = Column(Integer)
 
-    def calculate_task_performance(self):
-        return (self.completed_tasks / self.assigned_tasks) * 100 if self.assigned_tasks > 0 else 0
-
-    def calculate_attendance_performance(self):
-        return (self.total_attendance / 30) * 100
-
-    def calculate_leave_performance(self):
-        # Penalty for leaves beyond 3
-        leaves_penalty = max(0, self.total_leaves - 3)
-        leave_percentage = max(0, 100 - (leaves_penalty * 5))  # Assuming a penalty of 5% for each leave beyond 3
-        return leave_percentage
-
-    def calculate_overall_performance(self):
-        task_performance = self.calculate_task_performance()
-        attendance_performance = self.calculate_attendance_performance()
-        leave_performance = self.calculate_leave_performance()
-        overall_performance = (task_performance + attendance_performance + leave_performance) / 3
-        return overall_performance
+# Database setup
+DATABASE_URL = "sqlite:///./employee_performance.db"
+engine = create_engine(DATABASE_URL)
+Base.metadata.create_all(bind=engine)
 
 # Streamlit web application with individual performance tables
 def main():
@@ -44,7 +33,7 @@ def main():
         total_attendance = st.number_input(f"Enter Total Attendance (in days) for Employee {i+1}:", min_value=0, max_value=30, step=1)
         total_leaves = st.number_input(f"Enter Total Leaves (in days) for Employee {i+1}:", min_value=0, max_value=30, step=1)
 
-        employee = Employee(name, assigned_tasks, total_attendance, total_leaves)
+        employee = Employee(name=name, assigned_tasks=assigned_tasks, total_attendance=total_attendance, total_leaves=total_leaves)
         employees.append(employee)
 
     # Display individual performance for each employee
@@ -55,7 +44,7 @@ def main():
         st.subheader("Task Performance:")
         task_performance_data = {
             'Metric': ['Completed Tasks', 'Assigned Tasks', 'Task Performance Percentage'],
-            'Value': [employee.completed_tasks, employee.assigned_tasks, employee.calculate_task_performance()]
+            'Value': [0, employee.assigned_tasks, 0]
         }
         st.table(task_performance_data)
 
@@ -63,7 +52,7 @@ def main():
         st.subheader("Attendance Performance:")
         attendance_performance_data = {
             'Metric': ['Total Attendance Days', 'Attendance Percentage'],
-            'Value': [employee.total_attendance, employee.calculate_attendance_performance()]
+            'Value': [employee.total_attendance, 0]
         }
         st.table(attendance_performance_data)
 
@@ -71,7 +60,7 @@ def main():
         st.subheader("Leave Performance:")
         leave_performance_data = {
             'Metric': ['Total Leaves Taken', 'Leave Performance Percentage'],
-            'Value': [employee.total_leaves, employee.calculate_leave_performance()]
+            'Value': [employee.total_leaves, 0]
         }
         st.table(leave_performance_data)
 
@@ -79,9 +68,16 @@ def main():
         st.subheader("Overall Performance:")
         overall_performance_data = {
             'Metric': ['Overall Performance Percentage'],
-            'Value': [employee.calculate_overall_performance()]
+            'Value': [0]
         }
         st.table(overall_performance_data)
+
+        # Store employee data in the database
+        Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        session = Session()
+        session.add(employee)
+        session.commit()
+        session.close()
 
 if __name__ == "__main__":
     main()
