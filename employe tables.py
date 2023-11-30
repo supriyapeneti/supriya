@@ -1,11 +1,17 @@
 import streamlit as st
+import pandas as pd
 import psycopg2
 
-# Define your PostgreSQL connection parameters
+# Install openpyxl if not present
+try:
+    import openpyxl
+except ImportError:
+    st.warning("openpyxl not found. Please install it using: pip install openpyxl")
+    import openpyxl  # Verify if the installation was successful
 
 # Create a connection to the PostgreSQL database
 conn = psycopg2.connect(
-    database="employee", user='user', password='5001', host='127.0.0.1', port='5432'
+    database="employee1", user='user', password='5001', host='127.0.0.1', port='5432'
 )
 cursor = conn.cursor()
 
@@ -14,122 +20,96 @@ create_table_query = '''
 CREATE TABLE IF NOT EXISTS employees (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    attendance INTEGER NOT NULL,
-    productivity INTEGER NOT NULL,
-    teamwork INTEGER NOT NULL,
-    leave INTEGER NOT NULL,
-    feedback TEXT,
-    goals_achieved INTEGER NOT NULL,
-    self_assessment INTEGER NOT NULL,
-    performance_score INTEGER NOT NULL
+    assigned_tasks INTEGER NOT NULL,
+    completed_tasks INTEGER NOT NULL,
+    total_attendance INTEGER NOT NULL,
+    total_leaves INTEGER NOT NULL,
+    performance_percentage FLOAT
 );
 '''
 cursor.execute(create_table_query)
 conn.commit()
 
-# Added the sidebar
-app_mode = st.sidebar.radio(
-    "",
-    ("Employee Perfomance Calculator", "Retrive data by Employee name"),
-)
+# Employee class
+class Employee:
+    def __init__(self, name, assigned_tasks, total_attendance, total_leaves, completed_tasks):
+        self.name = name
+        self.assigned_tasks = assigned_tasks
+        self.completed_tasks = completed_tasks
+        self.total_attendance = total_attendance
+        self.total_leaves = total_leaves
+        self.performance_percentage = None
 
-if app_mode == "Employee Perfomance Calculator":
+    def calculate_performance(self):
+        task_performance = (self.completed_tasks / self.assigned_tasks) * 100
+        attendance_percentage = (self.total_attendance / 30) * 100  # Assuming 30 working days in a month
 
-    class Employee:
-        def __init__(self, name, attendance, productivity, teamwork, leave, feedback=None, goals_achieved=0,
-                     self_assessment=0):
-            self.name = name
-            self.attendance = attendance
-            self.productivity = productivity
-            self.teamwork = teamwork
-            self.leave = leave
-            self.feedback = feedback if feedback else "No feedback provided"
-            self.goals_achieved = goals_achieved
-            self.self_assessment = self_assessment
-            self.performance_score = None  # Initialize performance_score
+        # Penalty for leaves beyond 3
+        leaves_penalty = max(0, self.total_leaves - 3)
+        leave_percentage = max(0, 100 - (leaves_penalty * 3))  # Assuming a penalty of 3% for each leave beyond 3
 
-        def calculate_performance(self):
-            # Define weights for each criterion
-            attendance_weight = 0.2
-            productivity_weight = 0.4
-            teamwork_weight = 0.2
-            leave_weight = 0.1
-            goals_weight = 0.2
-            self_assessment_weight = 0.1
+        overall_performance = (task_performance + attendance_percentage + leave_percentage) / 3
+        self.performance_percentage = overall_performance
+        return overall_performance
 
-            # Calculate overall performance score
-            self.performance_score = (
-                    self.attendance * attendance_weight +
-                    self.productivity * productivity_weight +
-                    self.teamwork * teamwork_weight -
-                    self.leave * leave_weight +
-                    self.goals_achieved * goals_weight +
-                    self.self_assessment * self_assessment_weight
-            )
+def insert_employee_data(employee):
+    insert_query = '''
+    INSERT INTO employees (name, assigned_tasks, completed_tasks, total_attendance, total_leaves, performance_percentage)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    '''
+    cursor.execute(insert_query, (employee.name, employee.assigned_tasks, employee.completed_tasks,
+                                  employee.total_attendance, employee.total_leaves, employee.calculate_performance()))
+    conn.commit()
 
-            return self.performance_score
+def main():
+    st.title("Employee Performance Calculator")
 
+    # Input for Excel file upload
+    uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
-    # performance_app.py
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)  # For Excel files
 
-    def insert_employee_data(employee):
-        # Insert employee data into the database
-        insert_query = '''
-            INSERT INTO employees (name, attendance, productivity, teamwork, leave, feedback, goals_achieved, self_assessment, performance_score)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            '''
-        cursor.execute(insert_query, (employee.name, employee.attendance, employee.productivity, employee.teamwork,
-                                      employee.leave, employee.feedback, employee.goals_achieved,
-                                      employee.self_assessment,
-                                      employee.calculate_performance()))  # Use calculate_performance() here
-        conn.commit()
+            st.subheader("Uploaded Data:")
+            st.table(df)
 
+            employees = []
+            for index, row in df.iterrows():
+                employee = Employee(
+                    name=row['name'],
+                    assigned_tasks=row['assigned_tasks'],
+                    total_attendance=row['total_attendance'],
+                    total_leaves=row['total_leaves'],
+                    completed_tasks=row['completed_tasks']
+                )
+                employees.append(employee)
 
-    def main():
-        st.title("Employee Performance Calculator")
+            # Display consolidated table for all employees
+            performance_data = []
+            for i, employee in enumerate(employees):
+                performance_percentage = employee.calculate_performance()
+                performance_data.append({
+                    'Employee Name': employee.name,
+                    'Assigned Tasks': employee.assigned_tasks,
+                    'Completed Tasks': employee.completed_tasks,
+                    'Attendance Percentage': (employee.total_attendance / 30) * 100,
+                    'Leaves Taken': employee.total_leaves,
+                    'Performance Percentage': employee.performance_percentage
+                })
 
-        # Get employee information from user input
-        employee_name = st.text_input("Enter employee name:")
-        attendance = st.slider("Attendance:", 0, 100, 50)
-        productivity = st.slider("Productivity:", 0, 100, 50)
-        teamwork = st.slider("Teamwork:", 0, 100, 50)
-        leave = st.slider("Leave taken (days):", 0, 30, 0)
-        feedback = st.text_area("Feedback:")
-        goals_achieved = st.number_input("Number of goals achieved:", 0, 10, 0)
-        self_assessment = st.slider("Self-assessment:", 0, 100, 50)
+            st.subheader("Consolidated Employee Performance Table:")
+            st.table(performance_data)
 
-        # Create Employee instance
-        employee = Employee(
-            name=employee_name,
-            attendance=attendance,
-            productivity=productivity,
-            teamwork=teamwork,
-            leave=leave,
-            feedback=feedback,
-            goals_achieved=goals_achieved,
-            self_assessment=self_assessment,
-        )
+            if st.button("Submit"):
+                for employee in employees:
+                    insert_employee_data(employee)
+                st.success("Data submitted successfully!")
 
-        # Calculate button
-        if st.button("Calculate"):
-            # Calculate performance score
-            performance_score = employee.calculate_performance()
-
-            # Insert employee data into the database
-            insert_employee_data(employee)
-
-            # Display results
-            st.subheader(f"{employee_name}'s Performance Score: {performance_score:.2f}")
-
-            # Display additional information
-            st.write(f"\nFeedback: {feedback}")
-            st.write(f"Goals achieved: {goals_achieved}")
-            st.write(f"Self-assessment score: {self_assessment}")
-            st.write(f"Leave taken (days): {leave}")
+        except pd.errors.EmptyDataError:
+            st.warning("Uploaded file is empty.")
+        except pd.errors.ParserError:
+            st.error("Error parsing the file. Please upload a valid Excel file.")
 
 if __name__ == "__main__":
     main()
-
-# Close the database connection
-cursor.close()
-conn.close()
