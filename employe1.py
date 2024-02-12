@@ -1,70 +1,117 @@
 import streamlit as st
+import pandas as pd
+import psycopg2
 
+# Create a connection to the PostgreSQL database
+conn = psycopg2.connect(
+    database="employee", user='user', password='5001', host='127.0.0.1', port='5432'
+)
+cursor = conn.cursor()
+
+# Create a table to store employee information if it doesn't exist
+create_table_query = '''
+CREATE TABLE IF NOT EXISTS employees1(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    assigned_tasks INTEGER NOT NULL,
+    completed_tasks INTEGER NOT NULL,
+    total_attendance INTEGER NOT NULL,
+    total_leaves INTEGER NOT NULL,
+    performance_percentage FLOAT
+);
+'''
+cursor.execute(create_table_query)
+conn.commit()
+
+# Employee class
 class Employee:
-    def __init__(self, name, assigned_tasks, total_attendance, total_leaves):
+    def __init__(self, name, assigned_tasks, total_attendance, total_leaves, completed_tasks):
         self.name = name
         self.assigned_tasks = assigned_tasks
-        self.completed_tasks = 0
+        self.completed_tasks = completed_tasks
         self.total_attendance = total_attendance
         self.total_leaves = total_leaves
-
-    def complete_task(self, tasks_completed):
-        self.completed_tasks += tasks_completed
+        self.performance_percentage = None
 
     def calculate_performance(self):
         task_performance = (self.completed_tasks / self.assigned_tasks) * 100
         attendance_percentage = (self.total_attendance / 30) * 100  # Assuming 30 working days in a month
-        
+
         # Penalty for leaves beyond 3
         leaves_penalty = max(0, self.total_leaves - 3)
-        leave_percentage = max(0, 100 - (leaves_penalty * 5))  # Assuming a penalty of 5% for each leave beyond 3
-        
+        leave_percentage = max(0, 100 - (leaves_penalty * 3))  # Assuming a penalty of 3% for each leave beyond 3
+
         overall_performance = (task_performance + attendance_percentage + leave_percentage) / 3
+        self.performance_percentage = overall_performance
         return overall_performance
 
-# Streamlit web application with a consolidated table for all employees
+def insert_employee_data(employee):
+    insert_query = '''
+    INSERT INTO employees1 (name, assigned_tasks, completed_tasks, total_attendance, total_leaves, performance_percentage)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    '''
+    cursor.execute(insert_query, (employee.name, employee.assigned_tasks, employee.completed_tasks,
+                                  employee.total_attendance, employee.total_leaves, employee.calculate_performance()))
+    conn.commit()
+
 def main():
     st.title("Employee Performance Calculator")
 
-    # Input for the number of employees
-    num_employees = st.number_input("Enter Number of Employees:", min_value=1, step=1)
+    # Input for CSV or Excel file upload
+    uploaded_file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
 
-    # List to store Employee objects
-    employees = []
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)  # For CSV files
+            #df = pd.read_excel(uploaded_file)  # For Excel files
 
-    # Input for employee details
-    for i in range(num_employees):
-        st.header(f"Employee {i + 1}")
-        name = st.text_input(f"Enter Employee {i + 1} Name:")
-        assigned_tasks = st.number_input(f"Enter Number of Assigned Tasks for Employee {i + 1}:", min_value=1, step=1)
-        total_attendance = st.number_input(f"Enter Total Attendance for Employee {i + 1} (in days):", min_value=0, max_value=30, step=1)
-        total_leaves = st.number_input(f"Enter Total Leaves for Employee {i + 1} (in days):", min_value=0, max_value=30, step=1)
+            #st.subheader("Uploaded Data:")
+            #st.table(df)
 
-        # Create an instance of the Employee class and add it to the list
-        employee = Employee(name, assigned_tasks, total_attendance, total_leaves)
-        employees.append(employee)
+            employees = []
+            for index, row in df.iterrows():
+                employee = Employee(
+                    name=row['name'],
+                    assigned_tasks=row['assigned_tasks'],
+                    total_attendance=row['total_attendance'],
+                    total_leaves=row['total_leaves'],
+                    completed_tasks=row['completed_tasks']
+                )
+                employees.append(employee)
 
-        # Input for completed tasks
-        tasks_completed = st.number_input(f"Enter Number of Completed Tasks for Employee {i + 1}:", min_value=0, step=1)
-        employee.complete_task(tasks_completed)
+            # Display consolidated table for all employees
+            performance_data = []
+            for i, employee in enumerate(employees):
+                performance_percentage = employee.calculate_performance()
+                performance_data.append({
+                    'Employee Name': employee.name,
+                    'Assigned Tasks': employee.assigned_tasks,
+                    'Completed Tasks': employee.completed_tasks,
+                    'Attendance Percentage': (employee.total_attendance / 30) * 100,
+                    'Leaves Taken': employee.total_leaves,
+                    'Performance Percentage': employee.performance_percentage
+                })
 
-    # Display consolidated table for all employees
-    performance_data = []
-    for i, employee in enumerate(employees):
-        performance_percentage = employee.calculate_performance()
+            st.subheader("Consolidated Employee Performance Table:")
+            st.table(performance_data)
 
-        performance_data.append({
-            'Employee Name': employee.name,
-            'Assigned Tasks': employee.assigned_tasks,
-            'Completed Tasks': employee.completed_tasks,
-            'Attendance Percentage': (employee.total_attendance / 30) * 100,
-            'Leaves Taken': employee.total_leaves,
-            'Performance Percentage': performance_percentage
-        })
-
-    # Display consolidated table
-    st.subheader("Consolidated Employee Performance Table:")
-    st.table(performance_data)
+            if st.button("Submit"):
+                for employee in employees:
+                    insert_employee_data(employee)
+                st.success("Data submitted successfully!")
+            if st.button("Download Performance Data"):
+                performance_df = pd.DataFrame(performance_data)
+                performance_csv = performance_df.to_csv(index=False)
+                st.download_button(
+                    label="Download CSV",
+                    data=performance_csv,
+                    file_name="performance_data.csv",
+                    mime="text/csv"
+                )
+        except pd.errors.EmptyDataError:
+            st.warning("Uploaded file is empty.")
+        except pd.errors.ParserError:
+            st.error("Error parsing the file. Please upload a valid CSV or Excel file.")
 
 if __name__ == "__main__":
     main()
